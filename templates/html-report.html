@@ -1,0 +1,63 @@
+<html>
+  <head>
+    <title>Monthly Financial Reminder</title>
+  </head>
+  <body>
+    <div>
+      <h2>Bills</h2>
+      <table>
+        <tr>
+          <th>Name</th>
+          <th>Amount minimum</th>
+          <th>Amount maximum</th>
+        </tr>
+
+      {{ for bill in bills }}
+        <tr>
+          <td>
+            <a target="_blank" rel="noopener noreferrer" href="https://firefly.lol3r.com/subscriptions/show/{ bill.id }">
+              { bill.attributes.name }
+            </a>
+          </td>
+          <td>{ bill.attributes.amount_min }{ bill.attributes.currency_symbol }</td>
+          <td>{ bill.attributes.amount_max }{ bill.attributes.currency_symbol }</td>
+        </tr>
+      {{ endfor }}
+      </table>
+    </div>
+
+    <div>
+      <h2>Budgets</h2>
+      <table>
+        <tr>
+          <th>Name</th>
+          <th>Budgeted Amount</th>
+          <th>Spent Amount</th>
+        </tr>
+
+      {{ for budget in budgets }}
+        <tr>
+          <td>
+            <a target="_blank" rel="noopener noreferrer" href="https://firefly.lol3r.com/budgets/show/{ budget.id }">
+              { budget.name }
+            </a>
+          </td>
+          <td>{ budget.amount }{ budget.currency_symbol }</td>
+          <td>{ budget.spent }{ budget.currency_symbol }</td>
+        </tr>
+      {{ endfor }}
+      </table>
+    </div>
+
+    <div>
+      <h2>Categories</h2>
+      <table>
+        <tr>
+          <th>Name</th>
+          <th>Transactions</th>
+          <th>Spent Amount</th>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>
