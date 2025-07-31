@@ -6,6 +6,14 @@ pub struct Session {
     client: reqwest::Client,
 }
 
+#[derive(Debug)]
+pub enum RequestError {
+    ConstructUrl,
+    BuildRequest,
+    ExecuteRequest,
+    DecodeResponse(reqwest::Error),
+}
+
 impl Session {
     pub fn new(url: impl reqwest::IntoUrl, token: impl Into<String>) -> Self {
         Self {
@@ -58,6 +66,36 @@ impl Session {
         let response = response.error_for_status().map_err(|e| ())?;
 
         let data: api::FireflyResponse<Vec<api::Budget>> = response.json().await.map_err(|e| ())?;
+
+        Ok(data.data)
+    }
+
+    pub async fn load_categories(&self) -> Result<Vec<api::ListCategory>, ()> {
+        let url = self.base_url.join("api/v1/categories").map_err(|e| ())?;
+
+        let request = self.client.get(url).bearer_auth(&self.token).build().map_err(|e| ())?;
+        let response = self.client.execute(request).await.map_err(|e| ())?;
+
+        let data: api::FireflyResponse<Vec<api::ListCategory>> = response.json().await.map_err(|e| ())?;
+
+        Ok(data.data)
+    }
+
+    pub async fn load_category(&self, category: &str, timerange: Option<(chrono::NaiveDate, chrono::NaiveDate)>) -> Result<api::DetailsCategory, RequestError> {
+        let url = self.base_url.join("api/v1/categories/").map_err(|e| RequestError::ConstructUrl)?.join(category).map_err(|e| RequestError::ConstructUrl)?;
+        let url: reqwest::Url = match timerange {
+            None => url,
+            Some((start, end)) => {
+                let mut tmp = url;
+                tmp.set_query(Some(&format!("start={}&end={}", start, end)));
+                tmp
+            }
+        };
+
+        let request = self.client.get(url).bearer_auth(&self.token).build().map_err(|e| RequestError::BuildRequest)?;
+        let response = self.client.execute(request).await.map_err(|e| RequestError::BuildRequest)?;
+
+        let data: api::FireflyResponse<api::DetailsCategory> = response.json().await.map_err(|e| RequestError::DecodeResponse(e))?;
 
         Ok(data.data)
     }

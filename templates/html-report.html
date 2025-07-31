@@ -33,6 +33,7 @@
           <th>Name</th>
           <th>Budgeted Amount</th>
           <th>Spent Amount</th>
+          <th>Remaining</th>
         </tr>
 
       {{ for budget in budgets }}
@@ -44,6 +45,7 @@
           </td>
           <td>{ budget.amount }{ budget.currency_symbol }</td>
           <td>{ budget.spent }{ budget.currency_symbol }</td>
+          <td>{ budget.remaining }{ budget.currency_symbol }</td>
         </tr>
       {{ endfor }}
       </table>
@@ -54,9 +56,21 @@
       <table>
         <tr>
           <th>Name</th>
-          <th>Transactions</th>
           <th>Spent Amount</th>
+          <th>Earned Amount</th>
         </tr>
+
+      {{ for category in categories }}
+        <tr>
+          <td>
+            <a target="_blank" rel="noopener noreferrer" href="https://firefly.lol3r.com/categories/show/{ category.id }">
+              { category.name }
+            </a>
+          </td>
+          <td>{ category.spent }{ category.currency_symbol }</td>
+          <td>{ category.earned }{ category.currency_symbol }</td>
+        </tr>
+      {{ endfor }}
       </table>
     </div>
   </body>

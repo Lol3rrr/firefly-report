@@ -11,6 +11,16 @@ struct BudgetSummary {
     name: String,
     amount: f64,
     spent: f64,
+    remaining: f64,
+    currency_symbol: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct CategorySummary {
+    id: String,
+    name: String,
+    spent: f64,
+    earned: f64,
     currency_symbol: String,
 }
 
@@ -18,6 +28,7 @@ struct BudgetSummary {
 struct TemplateContext {
     bills: Vec<api::Bill>,
     budgets: Vec<BudgetSummary>,
+    categories: Vec<CategorySummary>,
 }
 
 
@@ -111,6 +122,7 @@ async fn load_budgets(
                 name: budget.attributes.name,
                 amount: budget_amount,
                 spent: spent_budget,
+                remaining: budget_amount + spent_budget,
                 currency_symbol: budget
                     .attributes
                     .spent
@@ -121,6 +133,33 @@ async fn load_budgets(
             }
         })
         .collect()
+}
+
+async fn load_categories(session: std::sync::Arc<Session>, start: NaiveDate, end: NaiveDate) -> Vec<CategorySummary> {
+    let categories = session.load_categories().await.unwrap();
+
+    let mut category_results = Vec::<CategorySummary>::new();
+    for category in categories {
+        let category_data = session.load_category(&category.id, Some((start, end))).await.unwrap();
+
+        let currency_symbol = 
+            category_data.attributes.spent.iter().map(|s| s.currency.currency_symbol.clone())
+            .chain(category_data.attributes.earned.iter().map(|s| s.currency.currency_symbol.clone()))
+            .next().unwrap_or_else(|| String::new());
+
+        let spent_amount = category_data.attributes.spent.iter().map(|s| s.sum.parse::<f64>().unwrap()).fold(0.0, |acc, d| acc + d);
+        let earned_amount = category_data.attributes.earned.iter().map(|s| s.sum.parse::<f64>().unwrap()).fold(0.0, |acc, d| acc + d);
+
+        category_results.push(CategorySummary {
+            id: category_data.id,
+            name: category_data.attributes.name,
+            currency_symbol,
+            spent: spent_amount,
+            earned: earned_amount,
+        });
+    }
+
+    category_results
 }
 
 fn main() {
@@ -170,14 +209,19 @@ fn main() {
         load_budgets(session, month_start, month_end).instrument(tracing::info_span!("Budgets"))
     });
 
-    let (bills, budgets) = runtime
-        .block_on(async move { tokio::try_join!(bills_handle, budgets_handle) })
+    let categories_handle = runtime.spawn({
+        let session = session.clone();
+        load_categories(session, month_start, month_end).instrument(tracing::info_span!("Categories"))
+    });
+
+    let (bills, budgets, categories) = runtime
+        .block_on(async move { tokio::try_join!(bills_handle, budgets_handle, categories_handle) })
         .unwrap();
 
     let mut tt = tinytemplate::TinyTemplate::new();
     tt.add_template("report", TEMPLATE).unwrap();
 
-    let context = TemplateContext { bills, budgets };
+    let context = TemplateContext { bills, budgets, categories };
 
     let rendered = tt.render("report", &context).unwrap();
     std::fs::write(args.output_file, rendered).unwrap();
