@@ -25,7 +25,7 @@ pub struct BillAttributes {
     pub active: bool,
     pub name: String,
     pub date: chrono::DateTime<Utc>,
-    pub next_expected_match: chrono::DateTime<Utc>,
+    pub next_expected_match: Option<chrono::DateTime<Utc>>,
     pub pay_dates: Vec<chrono::DateTime<Utc>>,
     pub amount_min: String,
     pub amount_max: String,
