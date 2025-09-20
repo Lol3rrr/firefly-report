@@ -74,8 +74,8 @@ pub type ListCategory = DataEntry<ListCategoryAttributes>;
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ListCategoryAttributes {
     pub name: String,
-    pub earned: Vec<serde_json::Value>,
-    pub spent: Vec<serde_json::Value>,
+    pub earned: Option<Vec<serde_json::Value>>,
+    pub spent: Option<Vec<serde_json::Value>>,
     #[serde(flatten)]
     pub other: HashMap<String, serde_json::Value>,
 }

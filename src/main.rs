@@ -31,7 +31,6 @@ struct TemplateContext {
     categories: Vec<CategorySummary>,
 }
 
-
 #[derive(Debug, clap::Parser)]
 struct CliArgs {
     #[clap(long)]
@@ -135,20 +134,47 @@ async fn load_budgets(
         .collect()
 }
 
-async fn load_categories(session: std::sync::Arc<Session>, start: NaiveDate, end: NaiveDate) -> Vec<CategorySummary> {
+async fn load_categories(
+    session: std::sync::Arc<Session>,
+    start: NaiveDate,
+    end: NaiveDate,
+) -> Vec<CategorySummary> {
     let categories = session.load_categories().await.unwrap();
 
     let mut category_results = Vec::<CategorySummary>::new();
     for category in categories {
-        let category_data = session.load_category(&category.id, Some((start, end))).await.unwrap();
+        let category_data = session
+            .load_category(&category.id, Some((start, end)))
+            .await
+            .unwrap();
 
-        let currency_symbol = 
-            category_data.attributes.spent.iter().map(|s| s.currency.currency_symbol.clone())
-            .chain(category_data.attributes.earned.iter().map(|s| s.currency.currency_symbol.clone()))
-            .next().unwrap_or_else(|| String::new());
+        let currency_symbol = category_data
+            .attributes
+            .spent
+            .iter()
+            .map(|s| s.currency.currency_symbol.clone())
+            .chain(
+                category_data
+                    .attributes
+                    .earned
+                    .iter()
+                    .map(|s| s.currency.currency_symbol.clone()),
+            )
+            .next()
+            .unwrap_or_else(|| String::new());
 
-        let spent_amount = category_data.attributes.spent.iter().map(|s| s.sum.parse::<f64>().unwrap()).fold(0.0, |acc, d| acc + d);
-        let earned_amount = category_data.attributes.earned.iter().map(|s| s.sum.parse::<f64>().unwrap()).fold(0.0, |acc, d| acc + d);
+        let spent_amount = category_data
+            .attributes
+            .spent
+            .iter()
+            .map(|s| s.sum.parse::<f64>().unwrap())
+            .fold(0.0, |acc, d| acc + d);
+        let earned_amount = category_data
+            .attributes
+            .earned
+            .iter()
+            .map(|s| s.sum.parse::<f64>().unwrap())
+            .fold(0.0, |acc, d| acc + d);
 
         category_results.push(CategorySummary {
             id: category_data.id,
@@ -175,10 +201,7 @@ fn main() {
 
     tracing::info!("Starting");
 
-    let session = std::sync::Arc::new(Session::new(
-        args.firefly_addr,
-        args.access_token,
-    ));
+    let session = std::sync::Arc::new(Session::new(args.firefly_addr, args.access_token));
 
     let current_date = Utc::now();
     tracing::info!("Current-Date: {:?}", current_date);
@@ -211,7 +234,8 @@ fn main() {
 
     let categories_handle = runtime.spawn({
         let session = session.clone();
-        load_categories(session, month_start, month_end).instrument(tracing::info_span!("Categories"))
+        load_categories(session, month_start, month_end)
+            .instrument(tracing::info_span!("Categories"))
     });
 
     let (bills, budgets, categories) = runtime
@@ -221,7 +245,11 @@ fn main() {
     let mut tt = tinytemplate::TinyTemplate::new();
     tt.add_template("report", TEMPLATE).unwrap();
 
-    let context = TemplateContext { bills, budgets, categories };
+    let context = TemplateContext {
+        bills,
+        budgets,
+        categories,
+    };
 
     let rendered = tt.render("report", &context).unwrap();
     std::fs::write(args.output_file, rendered).unwrap();
