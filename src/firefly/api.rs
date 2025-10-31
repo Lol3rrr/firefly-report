@@ -66,7 +66,7 @@ pub struct Spent {
 pub struct Earned {
     pub sum: String,
     #[serde(flatten)]
-    pub currency: Currency<String>,
+    pub currency: Currency<i64>,
 }
 
 pub type ListCategory = DataEntry<ListCategoryAttributes>;
